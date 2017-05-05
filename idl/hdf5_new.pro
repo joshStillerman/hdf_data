@@ -1,115 +1,3 @@
-pro hdf5_test
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;pro hdf5_test: mjg started 1/15, this version 1/16
-;this routine provides an example for writing hdf5 data
-;as required by the new open-access requirement
-;
-;we assume that a routine like this would create the figure files, 
-;typically in ps, at the same time (but that code is not shown)
-;this routine calls hdf5_new and hdf5_add, which package
-;idl native routines
-;
-;metadata is specified at three levels
-;file level - describing the figure
-;group level - corresponding to a trace or data group in the figure
-;            - typically each element in a figure legend would have
-;            - its own group
-;data level - metadata on each x, y or z array in each group
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-;specify hdf5 file level metadata
-file = 'Fig_1'
-fig_description = 'Besel Functions J0, J1 and J2' 
-fig_source = 'Phys. Plasmas 17, 1234 2010'
-comment = 'This is the way the ball bounces'
-user_fullname = 'John Doe'
-date = systime(0)
-
-;start a new hdf5 file
-hdf5_new, file=file, fig_description=fig_description, fig_source=fig_source, $
-              comment=comment, user_fullname=user_fullname,date=date
-
-;set up a simple color table (just for plotting)
-r = [000,255,255,000,000]
-g = [000,255,000,000,255]
-b = [000,255,000,255,000]
-tvlct,r,g,b
-
-;compute and plot the first curve (you'll do this to create the plot file)
-x = indgen(100)/5.
-y0 = beselj(x,0)
-plot,x,y0
-;define metadata for 1st data trace/group 
-x_units = 's'
-x_axis = 'time (s)'
-x_name = 'measured with a stopwatch'
-x_type = 'float'
-
-y_units = 'm'
-y_axis = 'height (m)'
-y_name = 'measured with a ruler'
-y_type = 'float'
-
-legend = 'J0'
-group_name = legend ;chosen for simplicity
-plot_graphics = 'black line'
-;now add this data group to the file
-hdf5_add, x,y0,file=file,group_name=group_name,$
-              x_units=x_units,x_axis=x_axis, x_name=x_name,x_type=x_type,$
-              y_units=y_units, y_axis=y_axis,y_name=y_name,y_type=y_type,$
-              legend=legend, plot_graphics=plot_graphics
-
-;compute and plot the 2nd curve
-y1 = beselj(x,1)
-oplot,x,y1,color=3
-
-;define metadata for 2nd trace/data group
-x_units = 's'
-x_axis = 'time (s)'
-x_name = 'measured with a stopwatch'
-x_type = 'float'
-
-y_units = 'm'
-y_axis = 'height (m)'
-y_name = 'measured with a ruler'
-y_type = 'float'
-
-legend = 'J1'
-group_name = legend
-plot_graphics = 'red line'
-;add this data group to the file
-hdf5_add, x,y1,file=file,group_name=group_name,$
-              x_units=x_units,x_axis=x_axis, x_name=x_name,x_type=x_type,$
-              y_units=y_units, y_axis=y_axis,y_name=y_name,y_type=y_type,$
-              legend=legend, plot_graphics=plot_graphics
-
-
-;compute and plot the third curve
-y2 = beselj(x,2)
-oplot,x,y2,color=4
-
-;define metadata for third group/trace 
-x_units = 's'
-x_axis = 'time (s)'
-x_name = 'measured with a stopwatch'
-x_type = 'float'
-
-y_units = 'm'
-y_axis = 'height (m)'
-y_name = 'measured with a ruler'
-y_type = 'float'
-
-legend = 'J2'
-group_name = legend
-plot_graphics = 'green line'
-;add data group for this trace to file
-hdf5_add, x,y2,file=file,group_name=group_name,$
-              x_units=x_units,x_axis=x_axis, x_name=x_name,x_type=x_type,$
-              y_units=y_units, y_axis=y_axis,y_name=y_name,y_type=y_type,$
-              legend=legend, plot_graphics=plot_graphics
-
-
-end
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -133,6 +21,7 @@ end
 pro hdf5_add, x,y,z, file=file,group_name=group_name,$
               x_units=x_units,x_axis=x_axis, x_name=x_name,x_type=x_type, $
               y_units=y_units, y_axis=y_axis,y_name=y_name,y_type=y_type, $
+              z_units=z_units, z_axis=z_axis,z_name=z_name,z_type=z_type, $
               legend=legend, plot_graphics=plot_graphics, $
               verbose=verbose
 ;add a data group in a file called file.hdf5
@@ -159,22 +48,19 @@ pro hdf5_add, x,y,z, file=file,group_name=group_name,$
 ;            similar to what might appear in the figure caption  
 ;
 ; x = float or integer array 
-; nx = number of elements in x array
 ; x_units = string
 ; x_axis = string - label for x axis
 ; x_name = string - optional longer description of x data
 ; x_type = string - optional data type
 ;
-; y = float or integer array - should be same size as x
-; ny = number of elements in y array
+; y = float or integer array - should be same size as x in 2d plot
 ; y_units = string
 ; y_axis = string - label for y axis
 ; y_name = string - optional longer description of y data
 ; y_type = string - optional data type
 ;
-;optionally
-; z = float or integer array - should be same size as x
-; nz = number of elements in z array
+;optionally for 3D plot
+; z = float or integer array - should be same size and shape as x#y
 ; z_units = string
 ; z_axis = string - label for z axis
 ; z_name = string - optional longer description of z data
@@ -182,6 +68,8 @@ pro hdf5_add, x,y,z, file=file,group_name=group_name,$
 ;
 ; verbose = set to get more feedback on keywords and arguments
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+np = n_params() ;how many variables passed in?
+;print,'np ',np
 
 if not keyword_set(file) then file = 'test'
 file_name = file+'.hdf5'
@@ -189,6 +77,7 @@ file_name = file+'.hdf5'
 h5_struct = h5_parse(file_name,/read)  ;read the file and parse into structure
 h5_struct.root.n_groups._data = h5_struct.root.n_groups._data + 1  ;increment to set n_groups
 
+;defaults for missing keywords
 if not keyword_set(group_name) then group_name = 'group'+strtrim(h5_struct.root.n_groups._data,2)
 if not keyword_set(legend) then legend = 'legend'+strtrim(h5_struct.root.n_groups._data,2)
 if not keyword_set (plot_graphics) then plot_graphics = 'plot graphics metadata not set'
@@ -202,37 +91,60 @@ if not keyword_set(y_units) then y_units = ' '
 if not keyword_set(y_axis) then y_axis = 'y axis not set'
 if not keyword_set(y_name) then y_name = 'y name not set'
 if not keyword_set(y_type) then y_type = 'y type not set'
+if n_params() lt 2 then y = 0   ;only x data in call-in
 
 if not keyword_set(z_units) then z_units = ' '
 if not keyword_set(z_axis) then z_axis = 'z axis not set'
 if not keyword_set(z_name) then z_name = 'z name not set'
 if not keyword_set(z_type) then z_type = 'z type not set'
+if n_params() lt 3 then z = 0   ;only x.y data in call-in
 
 ;create data level attribute and data definition structures
-xmeta_units = {_name:'x units',_type:'attribute',_data:x_units}  ;structure with attributes
-xmeta_axis = {_name:'x axis label',_type:'attribute',_data:x_axis}  ;structure with attributes
-xmeta_type = {_name:'x data type',_type:'attribute',_data:x_type}  ;structure with attributes
+xmeta_units = {_name:'units',_type:'attribute',_data:x_units}  ;structure with attributes
+xmeta_axis = {_name:'axis label',_type:'attribute',_data:x_axis}  ;structure with attributes
+xmeta_type = {_name:'data type',_type:'attribute',_data:x_type}  ;structure with attributes
 xmeta_n =  {_name:'nx',_type:'attribute',_data:n_elements(x)}  ;structure with attributes
+xmeta_name = {_name:'x_name',_type:'attribute',_data:x_name}
 xdataset = {_name:'x_values', _type:'dataset',_data:x, $
              xmeta_units:xmeta_units,xmeta_axis:xmeta_axis, $
-             xmeta_type:xmeta_type,xmeta_n:xmeta_n}  ;structure to add x dataset to group
+             xmeta_type:xmeta_type,xmeta_n:xmeta_n,xmeta_name:xmeta_name}  ;structure to add x dataset to group
 
-ymeta_units = {_name:'y units',_type:'attribute',_data:y_units}  ;structure with attributes
-ymeta_axis = {_name:'y axis label',_type:'attribute',_data:y_axis}  ;structure with attributes
-ymeta_type = {_name:'y data type',_type:'attribute',_data:y_type}  ;structure with attributes
+ymeta_units = {_name:'units',_type:'attribute',_data:y_units}  ;structure with attributes
+ymeta_axis = {_name:'axis label',_type:'attribute',_data:y_axis}  ;structure with attributes
+ymeta_type = {_name:'data type',_type:'attribute',_data:y_type}  ;structure with attributes
 ymeta_n =  {_name:'ny',_type:'attribute',_data:n_elements(y)}  ;structure with attributes
+ymeta_name = {_name:'y_name',_type:'attribute',_data:y_name}
 ydataset = {_name:'y_values', _type:'dataset',_data:y, $
              ymeta_units:ymeta_units,ymeta_axis:ymeta_axis, $
-             ymeta_type:ymeta_type,ymeta_n:ymeta_n}  ;structure to add y dataset
+             ymeta_type:ymeta_type,ymeta_n:ymeta_n,ymeta_name:ymeta_name}  ;structure to add y dataset
+
+zmeta_units = {_name:'units',_type:'attribute',_data:z_units}  ;structure with attributes
+zmeta_axis = {_name:'axis label',_type:'attribute',_data:z_axis}  ;structure with attributes
+zmeta_type = {_name:'data type',_type:'attribute',_data:z_type}  ;structure with attributes
+zmeta_n =  {_name:'nz',_type:'attribute',_data:n_elements(z)}  ;structure with attributes
+zmeta_name = {_name:'z_name',_type:'attribute',_data:z_name}
+zdataset = {_name:'z_values', _type:'dataset',_data:z, $
+             zmeta_units:zmeta_units,zmeta_axis:zmeta_axis, $
+             zmeta_type:zmeta_type,zmeta_n:zmeta_n,zmeta_name:zmeta_name}  ;structure to add z dataset
 
 ;create group level metadata structures and group definition structures
 legend =  {_name:'legend',_type:'attribute',_data:legend}
 plot_meta =  {_name:'group1 plotting information',_type:'attribute',_data:plot_graphics}
-group = {_name:group_name,_type:'group',$
-           plot_meta:plot_meta,legend:legend,$
-           xdataset:xdataset,ydataset:ydataset}
 
-;create root group and create file
+case np of
+  1: group = {_name:group_name,_type:'group',$
+             plot_meta:plot_meta,legend:legend,$
+             xdataset:xdataset}
+  2: group = {_name:group_name,_type:'group',$
+             plot_meta:plot_meta,legend:legend,$
+             xdataset:xdataset,ydataset:ydataset}
+  3: group = {_name:group_name,_type:'group',$
+             plot_meta:plot_meta,legend:legend,$
+             xdataset:xdataset,ydataset:ydataset,zdataset:zdataset}
+  else: print,'too many arguments - only x,y,z'
+endcase
+
+;create root group (concatenate structures) and create file
 root_group = create_struct(group_name,group,h5_struct.root)
 h5_create,file_name,root_group
 
@@ -274,7 +186,7 @@ if not keyword_set(fig_description) then fig_description = 'figure description n
 if not keyword_set(fig_source) then fig_source = 'figure source not set'
 if not keyword_set(comment) then comment = 'figure comment not set'
 if not keyword_set(user_fullname) then user_fullname = 'user full name not set'
-if not keyword_set(date) then date = systime(0)
+
 filename = file+'.hdf5' ;file name
 fig_name = file   ;use for root group name
 login_info = get_login_info()
