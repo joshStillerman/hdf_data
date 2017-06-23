@@ -1,109 +1,192 @@
-pro hdf5_test
-; test writing hdf5 files
-; aim is to prepare for open-access data requirement
-; simplest idl interface requires creation of a hierarchical structure
-; containing all information; then file is created by single call
-; to 'h5_create' function
-; seems simpler than individual calls to add elements with
-; multiple opens and closes
+pro hdf5_test,ps=ps
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;pro hdf5_test: mjg started 1/15, this version 7/16
+;this routine provides an example for writing hdf5 data
+;as required by the new open-access requirement
+;
+;we assume that a routine like this would create the figure files, 
+;typically in ps, at the same time (but that code is not shown)
+;this routine calls hdf5_new and hdf5_add, which package
+;idl native routines
+;
+;metadata is specified at three levels
+;file level - describing the figure
+;group level - corresponding to a trace or data group in the figure
+;            - typically each element in a figure legend would have
+;            - its own group
+;data level - metadata on each x, y or z array in each group
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;
+;these are keywords that will be passed to the routines that create the hdf5 file
+;users will need to supply them or define them in their plotting routines
+;
+;keywords for file level metadata
+;
+;file = string - name of hdf5 file you wish to write (don't include
+;                file extension in name
+;                example:  if file='fig_3' then filename will be fig_3.hdf5
+;
+;fig_description = string describing figure (could be caption for manuscript)
+;
+;fig_source = string - identifies which manuscript/paper the figure is part of
+;             examples:  'JA-14-21' or  'NF 55 023012 2015'
+;
+;comment = string - anything else you want to say about the figure
+;
+;user_fullname =  string - full name of person creating file
+;
+;verbose = set to get more feedback on keywords and arguments
+;
+;date = date when this hdf5 file was created
+;
+;
+;keywords for group level metadata
+;
+;group_name = string, name for each trace or plot element, typically could
+;             be the plot legend if that is present and unambiguous
+;
+;legend = string used for group in the legend on the plot
+;         best if it exactly matched what was on the plot
+;
+;plot_graphics = string containing any special information that will 
+;                identify or characterize plot (color, line type, symbol, etc.) 
+;
+;keywords for data level metadata
+;
+;x_units, y_units, z_units = string containing units for each 
+;
+;x_axis, y_axis, z_axis = string containing axis labels as they are
+;                         on each graph
+;
+;x_type, y_type, z_type = string containing data type (integer, float, etc.)
+;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-;create 2 routines  hdf5_new.pro  hdf5_add
+;specify hdf5 file level metadata
+file = 'Fig_1'
+fig_description = 'Besel Functions J0, J1 and J2' 
+fig_source = 'Phys. Plasmas 17, 1234 2010'
+comment = 'This is the way the ball bounces'
+user_fullname = 'John Doe'
+date = systime(0)
 
-;hdf5_new will create the file and load file metadata including the
-;file name
+;start a new hdf5 file
+hdf5_new, file=file, fig_description=fig_description, fig_source=fig_source, $
+              comment=comment, user_fullname=user_fullname,date=date
 
-;hdf5_add will add a data group
-;each time hdf5_add is called it parses, adds the new group to the
-;resulting structure and writes a new file with the original name
+;set up a simple color table (just for plotting)
+r = [000,255,255,000,000]
+g = [000,255,000,000,255]
+b = [000,255,000,255,000]
+tvlct,r,g,b
 
+print,file+'.ps'
+help,keyword_set(ps)
+if keyword_set(ps) then begin
+  print,'ps'
+  set_plot,'ps'
+  !p.charthick=5
+  !p.thick = 5
+  !x.thick = 4
+  !y.thick = 4
+  device,/color,bits=8,/portrait,file=file+'.ps'
+  device,set_font='helvetica',font_index=20
+  !p.font = 0
+endif else begin
+  print,'x'
+  !p.charthick=1
+  !p.thick = 1
+endelse
 
-;need to figure out best way to do user interface
-;must put all of the input data into a structure:
-;does user input as keywords or as structure? 
-;need extensive input data checking before commands are executed
+;define metadata for 1st data trace/group 
+x_units = 's'
+x_axis = 'time (s)'
+x_name = 'measured with a stopwatch'
+x_type = 'float'
 
-;provide examples for users (in either case - keywords or structure)
-
-;input = {filename:filename,$       ;string
-;         filecomment:filecomment,$ ;string
-
-;what should the user interface look like?
-;input as keywords?  structure?
-;how to handle multiple, but unknown number of data groups?
-
-file = 'fig_4'
-filename = file+'.hdf5' ;file name
-fig_name = file   ;root group name
-;file level metadata
-comment = 'This is a test of a schema for figure data'
-name = 'John Doe'
-userid = 'jxd'
-fig_source = 'JA-15-1234.doc  Fig. 4'
-fig_description = 'height of bouncing ball vs time'
-n_groups = 2   ;groups of data in plot
-;rank = 1
-
-;data
-x = findgen(100)
-y1 = sin(x/10.)
-y2 = 1-y1
-
-;data level metadata
-x_units = 'sec'
-x_axis = 'Time (sec)'
 y_units = 'm'
-y_axis = 'Height (m)'
+y_axis = 'height (m)'
+y_name = 'measured with a ruler'
+y_type = 'float'
 
-;group level metadata
-legend_1 = 'Sine wave'
-comment_1 = 'This is a Sine Wave'
-plot1_graphics = 'red circles'
-legend_2 = '1/Sin'
-comment_2 = 'This data is 1/Sine'
-plot2_graphics = 'blue squares'
+legend = 'J0'
 
-;create data level attribute and data definition structures
-xmeta_units = {_name:'x units',_type:'attribute',_data:x_units}  ;structure with attributes
-xmeta_axis = {_name:'x axis label',_type:'attribute',_data:x_axis}  ;structure with attributes
-xdataset = {_name:'x_values', _type:'dataset',_data:x, $
-             xmeta_units:xmeta_units,xmeta_axis:xmeta_axis}  ;structure to add x dataset to group
+;compute and plot the first curve (you'll do this to create the plot file)
+x = indgen(100)/5.
+y0 = beselj(x,0)
+plot,x,y0,charsize=1.8,title=fig_description,xtitle=x_axis,ytitle=y_axis,color=0
+xyouts,/norm,.85,.85,legend,size=1.8
 
-ymeta_units = {_name:'y units',_type:'attribute',_data:y_units}  ;structure with attributes
-ymeta_axis = {_name:'y axis label',_type:'attribute',_data:y_axis}  ;structure with attributes
-ydataset1 = {_name:'y_values', _type:'dataset',_data:y1, $
-             ymeta_units:ymeta_units,ymeta_axis:ymeta_axis}  ;structure to add y dataset
-ydataset2 = {_name:'y_values', _type:'dataset',_data:y2, $
-             ymeta_units:ymeta_units,ymeta_axis:ymeta_axis}  ;structure to add y dataset
+group_name = legend ;chosen for simplicity
+plot_graphics = 'black line'
+;now add this data group to the hdf5 file
+hdf5_add, x,y0,file=file,group_name=group_name,$
+              x_units=x_units,x_axis=x_axis, x_name=x_name,x_type=x_type,$
+              y_units=y_units, y_axis=y_axis,y_name=y_name,y_type=y_type,$
+              legend=legend, plot_graphics=plot_graphics
 
-;for i = 0,n_groups-1 do begin
+;define metadata for 2nd trace/data group
+x_units = 's'
+x_axis = 'time (s)'
+x_name = 'measured with a stopwatch'
+x_type = 'float'
 
-;create group level metadata structures and group definition structures
-legend1 =  {_name:'legend 1',_type:'attribute',_data:legend_1}
-legend2 =  {_name:'legend 2',_type:'attribute',_data:legend_2}
-plot_meta =  {_name:'group1 plotting information',_type:'attribute',_data:plot1_graphics}
-group1 = {_name:'shot1',_type:'group',_comment:comment_1,$
-           plot_meta:plot_meta,legend1:legend1,$
-           xdataset:xdataset,ydataset:ydataset1}
+y_units = 'm'
+y_axis = 'height (m)'
+y_name = 'measured with a ruler'
+y_type = 'float'
 
-plot_meta =  {_name:'group2 plotting information',_type:'attribute',_data:plot2_graphics}
-group2 = {_name:'shot2',_type:'group',_comment:comment_2,$
-          legend2:legend2, plot_meta:plot_meta,$
-          xdataset:xdataset,ydataset:ydataset2}
+legend = 'J1'
 
-;create file level attribute structures
-file_username = {_name:'user_name',_type:'attribute',_data:name}
-file_userid = {_name:'userid',_type:'attribute',_data:userid}
-file_fig_description = {_name:'fig_description',_type:'attribute',_data:fig_description}
-file_fig_source = {_name:'fig_source',_type:'attribute',_data:fig_source}
-file_n_groups = {_name:'n_groups',_type:'attribute',_data:n_groups}
+;compute and plot the 2nd curve
+y1 = beselj(x,1)
+oplot,x,y1,color=2
+xyouts,/norm,.85,.8,legend,size=1.8,color=2
 
-;create root group and create file
-root_group = {_name:fig_name,_type:'group',_comment:comment, $
-               file_username:file_username, file_userid:file_userid, $
-               file_fig_description:file_fig_description,file_fig_source:file_fig_source, $
-               file_n_groups:file_n_groups, $
-               group1:group1, group2:group2}
+group_name = legend
+plot_graphics = 'red line'
+;add this data group to the file
+hdf5_add, x,y1,file=file,group_name=group_name,$
+              x_units=x_units,x_axis=x_axis, x_name=x_name,x_type=x_type,$
+              y_units=y_units, y_axis=y_axis,y_name=y_name,y_type=y_type,$
+              legend=legend, plot_graphics=plot_graphics
 
-h5_create,filename,root_group
+
+;define metadata for third group/trace 
+x_units = 's'
+x_axis = 'time (s)'
+x_name = 'measured with a stopwatch'
+x_type = 'float'
+
+y_units = 'm'
+y_axis = 'height (m)'
+y_name = 'measured with a ruler'
+y_type = 'float'
+
+legend = 'J2'
+
+;compute and plot the third curve
+y2 = beselj(x,2)
+oplot,x,y2,color=4
+xyouts,/norm,.85,.75,legend,size=1.8,color=4
+
+group_name = legend
+plot_graphics = 'green line'
+;add data group for this trace to file
+hdf5_add, x,y2,file=file,group_name=group_name,$
+              x_units=x_units,x_axis=x_axis, x_name=x_name,x_type=x_type,$
+              y_units=y_units, y_axis=y_axis,y_name=y_name,y_type=y_type,$
+              legend=legend, plot_graphics=plot_graphics
+
+if keyword_set(ps) then begin
+  device,/close
+  !p.charthick=1
+  !p.thick = 1
+  !x.thick = 1
+  !y.thick = 1
+  !p.font = -1
+  set_plot,'x'
+  ps = 0
+endif
 
 end
