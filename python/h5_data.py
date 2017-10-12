@@ -105,7 +105,7 @@ class h5_data():
         ds = self.root.create_group(name)
         ds.attrs['group 1 plotting information'] = plot_info
         ds.attrs['legend'] = legend or name
-        if not x_data == None:
+        if x_data is not None:
             try:
                 del ds['x_values']
             except:
@@ -116,7 +116,7 @@ class h5_data():
             x_values.attrs['data type'] = str(y_data.dtype)
             x_values.attrs['nx'] = len(x_data)
 
-        if not y_data == None:
+        if y_data is not None:
             try:
                 del ds['y_values']
             except:
@@ -127,7 +127,7 @@ class h5_data():
             y_values.attrs['data type'] = str(y_data.dtype)
             y_values.attrs['ny'] = len(y_data)
 
-        if not z_data == None:
+        if z_data is not None:
             try:
                 del ds['z_values']
             except:
