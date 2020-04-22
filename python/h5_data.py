@@ -57,7 +57,7 @@ class h5_data():
                 self.root.attrs['fig_description'] = fig_description or ''
                 self.root.attrs['fig_source'] = fig_source or ''
                 self.root.attrs['comment'] = comment or ''
-            except Exception,e:
+            except Exception as e:
                 raise(e, "error opening hdf5 file for write /%s/"%(filename,))
 
             
